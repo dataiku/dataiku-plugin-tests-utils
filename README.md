@@ -1,5 +1,9 @@
-# dataiku-plugin-tests-utils
-Common tooling for DSS plugins integration tests
+# How to test your plugin
+Development cycles should be supported with unit and integration tests. 
+To operate integration tests you will need the help of the `dataiku-plugin-tests-utils` pacakge in order
+to automate their executions while targeting DSS instances that should be dedicated to them.
+
+`dataiku-plugin-tests-utils` will be installed as a `pytest plugin`. So only install that package inside an environment dédicated for integration tests, otherwise `pytest` will complain about unused fixtures inside your unit tests.
 
 # How to install in your plugin
 To install the `dataiku-plugin-tests-utils` package for your plugins use the
@@ -8,20 +12,26 @@ you are in.
 ## Using Requierement.txt
 ### Development cycle
 
-`git+git://github.com/dataiku/dataiku-plugin-tests-utils.git@<BRANCH>#egg=dataiku-plugin-tests-utils`
+```
+git+git://github.com/dataiku/dataiku-plugin-tests-utils.git@<BRANCH>#egg=dataiku-plugin-tests-utils
+```
 
 Replace `<BRANCH>` by the most accurate value
 
 ### Stable release (untested for now)
 
-`git+git://github.com/dataiku/dataiku-plugin-tests-utils.git@releases/tag/<RELEASE_VERSION>#egg=dataiku-plugin-tests-utils`
+```
+git+git://github.com/dataiku/dataiku-plugin-tests-utils.git@releases/tag/<RELEASE_VERSION>#egg=dataiku-plugin-tests-utils
+```
 
-Replace `<RELEASE_VERSION>` by the moist accurate value
+Replace `<RELEASE_VERSION>` by the most accurate value
 
 ## Using Pipfile
 Put the following line under `[dev-packages]` section
 ### Development cycle
-`dku-plugin-test-utils = {git = "git://github.com/dataiku/dataiku-plugin-tests-utils.git", ref = "<BRANCH>"}`
+```
+dku-plugin-test-utils = {git = "git://github.com/dataiku/dataiku-plugin-tests-utils.git", ref = "<BRANCH>"}
+```
 ### Stable release
 TBD
 
@@ -39,7 +49,9 @@ Secondly, define a config file which will give the DSS you will target.
 			"usrA": "api_key",
 			"usrB": "api_key",
 			"default": "usrA"
-		}
+		},
+        "python_interpreter": ["PYTHON27", "PYTHON36"]
+
 	},
 	"DSSY":
 	{
@@ -48,13 +60,15 @@ Secondly, define a config file which will give the DSS you will target.
 			"usrA": "api_key",
 			"usrB": "api_key",
 			"default": "usrB"
-		}
+		},
+        "python_interpreter": ["PYTHON36", "PYTHON39"]
 	}
 }
 
 ```
-Beware!!, user names must be identical in the configuration file between the different DSS instance.
-Then, set the env var `PLUGIN_INTEGRATION_TEST_INSTANCE` to point to the config file.
+
+**BEWARE**: User names must be identical in the configuration file between the different DSS instances.
+Then, set the environment variable `PLUGIN_INTEGRATION_TEST_INSTANCE` to point to the config file.
 
 # How to use the package
 
@@ -71,29 +85,18 @@ The python test function triggers the targeted DSS scenario and waits either for
 Thence your test function should look like the following snippet :
 ```python
 # Mandatory imprts
-import pytest
-import logging
-
 from dku_plugin_test_utils import dss_scenario
 
-# Mandatory object for testing
-# These are the module level fixtures that will be created before running any tests.
-pytestmark = pytest.mark.usefixtures("plugin", "dss_target")
-
-# The modulke level logger to understand where you are when a failure arises
-logger = logging.getLogger("dss-plugin-test.PLUGIN_NAME.current_python_module_name")
-
-def test_run_some_dss_scenario(client, plugin):
-     dss_scenario.run("default", user_clients["default"], 'PROJECT_KEY', 'scenario_id', logger)
+def test_run_some_dss_scenario(user_dss_clients):
+     dss_scenario.run(user_clients, 'PROJECT_KEY', 'scenario_id', user="user1")
 
 # [... other tests ...]
 ```
 With:
-- `default`: being the default user that will run the scenario. It could be any other user as defined in you configuration file as seen above
-- `user_clients["default"]`: representing the dss client corresponding to the desired user.
+- `user_dss_clients`: representing the dss client corresponding to the desired user.
 - `PROJECT_KEY`: The project that holds the test scenarios
 - `scenario_id`: The test scenario to run
-- `logger`: The module level logger. It will help you narow down any problem in can of error
+- `user`: Specify the user to run the scenario with. It is an optionnal argument, by default it equalt to "default".
 
 ## How to generate a graphical report with Allure for integration tests
 
@@ -110,6 +113,6 @@ and the list of public symbols:
 
 - `run_config`:
   - `ScenarioConfiguration`: Class exposing the parsed run configuration as a python dict.
-  - `get_plugin_info`: Read the plugin.json file to extract plugin information as a python dict.
+  - `PluginInfo`: Parse the plugin.json and the code-env desc.json files to extract plugin metadata as a python dict.
 - `dss_scenario`: 
   - `run`: Run the targetted DSS scenario and wait for it completion either success or failure.
