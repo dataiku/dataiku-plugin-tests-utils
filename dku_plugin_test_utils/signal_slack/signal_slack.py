@@ -143,9 +143,8 @@ def send_slack_signal(path_to_raw_daily, slack_endpoint):
         x = requests.post(slack_endpoint, data=json.dumps(payload_base))
         x.raise_for_status()
 
-    # TODO: Re instate that once the bugs are fixed
-    #    for status_file in all_status_files:
-    #        os.remove(os.path.join(path, status_file))
+        for status_file in all_status_files:
+            os.remove(os.path.join(path_to_raw_daily, status_file))
     else:
         print("Nothing to notify, exiting ...")
 
