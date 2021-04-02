@@ -13,11 +13,10 @@ def run(client, project_key, scenario_id, user="default"):
     Once executed, job logs are collected and attached to an allure report
 
     Args:
-        user (str): The user used for the DSS client instance
         client: DSS clients instances from dataikuapi
         project_key (str): The project holding the scenarios to run
         scenario_id (str): The DSS scenario to run
-        logger (logger): The logger instance to use to output messages
+        user (str): The user used for the DSS client instance
     """
 
     stack_frame = inspect.stack()[1]
