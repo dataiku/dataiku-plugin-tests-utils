@@ -43,9 +43,7 @@ def pytest_generate_tests(metafunc):
         targets = set(targets)
 
         if excluded_targets.isdisjoint(targets):
-            logger.warning("You have excluded non existing DSS targets. Actual DSS targets : {}. Ignoring them".format(
-                ','.join(targets)))
-            excluded_targets = set()
+            raise RuntimeError("You have excluded non existing DSS targets. Actual DSS targets : {}".format(','.join(targets)))
 
         # substract the excluded target from the target
         targets = list(targets - excluded_targets)
