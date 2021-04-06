@@ -28,6 +28,8 @@ class ScenarioConfiguration(object):
         if self._initialized:
             return
 
+        self._initialized = True
+
         # Get the path to the configuration file, if it is empty raise an Error
         test_instance_config_path = os.getenv("PLUGIN_INTEGRATION_TEST_INSTANCE", None)
         if not test_instance_config_path:
@@ -91,6 +93,8 @@ class PluginInfo(object):
         # Skip the init if we already have read the file.
         if self._initialized:
             return
+
+        self._initialized = True
 
         self._plugin_metadata = None
         self._code_env_info = None

@@ -110,7 +110,7 @@ def send_slack_signal(path_to_raw_daily, slack_endpoint):
         plugin_url = last_success_url if last_success_url != "" else last_failure_url
         plugin_url = plugin_url if plugin_url != "" else last_unstable_url
 
-        ret = re.match(".*/Dataiku/job/(.+)/job/.*", plugin_url)
+        ret = re.match(".*/dataiku/job/(.+)/job/.*", plugin_url)
         plugin_name = ret.group(1)
         
         if PR_title == 'null' and PR_author == 'null' and PR_github_link == 'null':
