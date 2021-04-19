@@ -8,6 +8,8 @@ import sys
 
 import requests
 
+BATCH_SIZE = 48
+
 
 def send_slack_signal(path_to_raw_daily, slack_endpoint):
 
@@ -134,14 +136,19 @@ def send_slack_signal(path_to_raw_daily, slack_endpoint):
     print("---------")
 
     if blocks:
-        payload_base["blocks"].extend(blocks)
+        i = 0
+        while i < len(blocks):
+            blocks_batch = blocks[i:i+BATCH_SIZE]
+            batch_payload = cp.deepcopy(payload_base)
+            batch_payload["blocks"].extend(blocks_batch)
 
-        print("payload ----")
-        print(json.dumps(payload_base, indent=2))
-        print("------------")
+            print("payload ----")
+            print(json.dumps(batch_payload, indent=2))
+            print("------------")
 
-        x = requests.post(slack_endpoint, data=json.dumps(payload_base))
-        x.raise_for_status()
+            x = requests.post(slack_endpoint, data=json.dumps(batch_payload))
+            x.raise_for_status()
+            i += BATCH_SIZE
 
         for status_file in all_status_files:
             os.remove(os.path.join(path_to_raw_daily, status_file))
