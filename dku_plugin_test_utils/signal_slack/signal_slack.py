@@ -144,7 +144,7 @@ def send_slack_signal(path_to_raw_daily, slack_endpoint):
         print("------------")
         while batch_n < len(blocks):
             blocks_batch = blocks[batch_n:batch_n+BATCH_SIZE]
-            batch_payload = cp.deepcopy(payload_base)
+            batch_payload = copy.deepcopy(payload_base)
             batch_payload["blocks"].extend(blocks_batch)
 
             print("payload ----")
