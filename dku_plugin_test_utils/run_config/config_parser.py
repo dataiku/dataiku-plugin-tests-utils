@@ -97,12 +97,15 @@ class PluginInfo(object):
         self._initialized = True
 
         self._plugin_metadata = None
-        self._code_env_info = None
         with open('plugin.json') as json_file:
             self._plugin_metadata = json.load(json_file)
 
-        with open('code-env/python/desc.json') as json_file:
-            self._code_env_info = json.load(json_file)
+        self._code_env_info = None
+        # Some plugins don't have a specific code-env defined (they use DSS built-in code-env instead).
+        # for those, code-env desc.json will not exist:
+        if os.path.isfile('code-env/python/desc.json'):
+            with open('code-env/python/desc.json') as json_file:
+                self._code_env_info = json.load(json_file)
 
         python_interpretors_to_use = None
         if "acceptedPythonInterpreters" in self._code_env_info and len(self._code_env_info["acceptedPythonInterpreters"]) > 0:
@@ -110,7 +113,7 @@ class PluginInfo(object):
             if all(map(lambda x: "PYTHON3" in x, _envs)):
                 python_interpretors_to_use = _envs  # All interpretor are python3 so taking any should do the trick
             else:
-                # We have a mix of python2 and python3 or just python2 
+                # We have a mix of python2 and python3 or just python2
                 if all(map(lambda x: "PYTHON2" in x, _envs)):
                     python_interpretors_to_use = _envs   # All interpretor are python2 so taking any should do the trick
                 else:
@@ -132,4 +135,4 @@ class PluginInfo(object):
         Returns:
             dict: The python dict representing the code env metadata
         """
-        return self._plugin_metadata
+        return self._code_env_info
