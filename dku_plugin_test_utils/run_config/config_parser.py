@@ -107,19 +107,19 @@ class PluginInfo(object):
             with open('code-env/python/desc.json') as json_file:
                 self._code_env_info = json.load(json_file)
 
-        python_interpretors_to_use = None
-        if "acceptedPythonInterpreters" in self._code_env_info and len(self._code_env_info["acceptedPythonInterpreters"]) > 0:
-            _envs = self._code_env_info["acceptedPythonInterpreters"]
-            if all(map(lambda x: "PYTHON3" in x, _envs)):
-                python_interpretors_to_use = _envs  # All interpretor are python3 so taking any should do the trick
-            else:
-                # We have a mix of python2 and python3 or just python2
-                if all(map(lambda x: "PYTHON2" in x, _envs)):
-                    python_interpretors_to_use = _envs   # All interpretor are python2 so taking any should do the trick
+            python_interpretors_to_use = None
+            if "acceptedPythonInterpreters" in self._code_env_info and len(self._code_env_info["acceptedPythonInterpreters"]) > 0:
+                _envs = self._code_env_info["acceptedPythonInterpreters"]
+                if all(map(lambda x: "PYTHON3" in x, _envs)):
+                    python_interpretors_to_use = _envs  # All interpretor are python3 so taking any should do the trick
                 else:
-                    python_interpretors_to_use = list(filter(lambda x: "PYTHON2" in x, _envs))  # Filtering out python2, and taking any python3 interpretor version.
+                    # We have a mix of python2 and python3 or just python2
+                    if all(map(lambda x: "PYTHON2" in x, _envs)):
+                        python_interpretors_to_use = _envs   # All interpretor are python2 so taking any should do the trick
+                    else:
+                        python_interpretors_to_use = list(filter(lambda x: "PYTHON2" in x, _envs))  # Filtering out python2, and taking any python3 interpretor version.
 
-            self._plugin_metadata.update({"python_interpreter": python_interpretors_to_use})
+                self._plugin_metadata.update({"python_interpreter": python_interpretors_to_use})
 
     @property
     def plugin_metadata(self):
