@@ -163,24 +163,26 @@ def plugin(dss_clients):
         plugin_settings = uploaded_plugin.get_settings()
         raw_plugin_settings = plugin_settings.get_raw()
 
-        if "codeEnvName" in raw_plugin_settings and len(raw_plugin_settings["codeEnvName"]) != 0:
-            logger.debug("Code env [{code_env_name}] is already associated to [{plugin_id}] on [{dss_target}], deleting it".format(code_env_name=raw_plugin_settings["codeEnvName"], 
-                                                                                                                                   plugin_id=info["id"], 
-                                                                                                                                   dss_target=target))
+        # install (or reinstall) code-env only if plugin has a specific code-env defined (not using DSS built-in):
+        if PluginInfo().plugin_codenv_metadata is not None:
+            if "codeEnvName" in raw_plugin_settings and len(raw_plugin_settings["codeEnvName"]) != 0:
+                logger.debug("Code env [{code_env_name}] is already associated to [{plugin_id}] on [{dss_target}], deleting it".format(code_env_name=raw_plugin_settings["codeEnvName"],
+                                                                                                                                       plugin_id=info["id"],
+                                                                                                                                       dss_target=target))
 
-            code_env_list = admin_client.list_code_envs()
-            code_env_info = list(filter(lambda x: x["envName"] == raw_plugin_settings["codeEnvName"], code_env_list))
-            if code_env_info:
-                code_env_info = code_env_info[0]
-                code_env = admin_client.get_code_env(code_env_info["envLang"], code_env_info["envName"])
-                code_env.delete()
-            logger.debug("Code env [{code_env_name}] is deleted. Creating it again and associating it back to [{plugin_id}] on [{dss_target}]".format(code_env_name=raw_plugin_settings["codeEnvName"],
-                                                                                                                                                      plugin_id=info["id"],
-                                                                                                                                                      dss_target=target))
-            _install_code_env(target, info, plugin_settings, uploaded_plugin)
-        else:
-            logger.debug("No code env is associated to [{plugin_id}] on [{dss_target}], creating it".format(plugin_id=info["id"], dss_target=target))
-            _install_code_env(target, info, plugin_settings, uploaded_plugin)
+                code_env_list = admin_client.list_code_envs()
+                code_env_info = list(filter(lambda x: x["envName"] == raw_plugin_settings["codeEnvName"], code_env_list))
+                if code_env_info:
+                    code_env_info = code_env_info[0]
+                    code_env = admin_client.get_code_env(code_env_info["envLang"], code_env_info["envName"])
+                    code_env.delete()
+                logger.debug("Code env [{code_env_name}] is deleted. Creating it again and associating it back to [{plugin_id}] on [{dss_target}]".format(code_env_name=raw_plugin_settings["codeEnvName"],
+                                                                                                                                                          plugin_id=info["id"],
+                                                                                                                                                          dss_target=target))
+                _install_code_env(target, info, plugin_settings, uploaded_plugin)
+            else:
+                logger.debug("No code env is associated to [{plugin_id}] on [{dss_target}], creating it".format(plugin_id=info["id"], dss_target=target))
+                _install_code_env(target, info, plugin_settings, uploaded_plugin)
 
 
 def _install_code_env(target, plugin_info, plugin_settings, uploaded_plugin):
