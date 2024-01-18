@@ -84,7 +84,7 @@ def dss_target(request):
 
     plugin_python_interpreter = set(
         current_plugin_config["python_interpreter"]
-        if "python_interpreter" in current_run_config
+        if "python_interpreter" in current_plugin_config
         else []
     )
 
