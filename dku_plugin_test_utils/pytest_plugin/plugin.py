@@ -10,7 +10,6 @@ from dku_plugin_test_utils.logger import Log
 from dku_plugin_test_utils.run_config import ScenarioConfiguration
 from dku_plugin_test_utils.run_config import PluginInfo
 
-
 # Entry point for integration test cession, load the logger configuration
 Log()
 
@@ -19,14 +18,16 @@ logger = logging.getLogger("dss-plugin-test.pytest_plugin")
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--exclude-dss-targets", action="store", help="\"Target,[other targets]\". Exclude DSS target from the instance configuration file."
+        "--exclude-dss-targets",
+        action="store",
+        help='"Target,[other targets]". Exclude DSS target from the instance configuration file.',
     )
 
 
 def pytest_generate_tests(metafunc):
     """
     Pytest exposed hook allowing to dynamically alterate the pytest representation of a test which is metafunc
-    Here we use that hook to dynamically paramertrize the "client" fixture of each tests. 
+    Here we use that hook to dynamically paramertrize the "client" fixture of each tests.
     Therefore, a new client will be instantiated for each DSS instance.
 
     Args:
@@ -43,7 +44,11 @@ def pytest_generate_tests(metafunc):
         targets = set(targets)
 
         if excluded_targets.isdisjoint(targets):
-            raise RuntimeError("You have excluded non existing DSS targets. Actual DSS targets : {}".format(','.join(targets)))
+            raise RuntimeError(
+                "You have excluded non existing DSS targets. Actual DSS targets : {}".format(
+                    ",".join(targets)
+                )
+            )
 
         # substract the excluded target from the target
         targets = list(targets - excluded_targets)
@@ -54,11 +59,11 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize("dss_target", targets, indirect=["dss_target"])
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def dss_target(request):
     """
     This is a parameterized fixture. Its value will be set with the different DSS target (DSS7, DSS8 ...) that are specified in the configuration file.
-    It returns the value of the considered DSS target for the test. Here it is only used by other fixtures, but one could use it 
+    It returns the value of the considered DSS target for the test. Here it is only used by other fixtures, but one could use it
     as a test function parameter to access its value inside the test function.
 
     Args:
@@ -67,7 +72,37 @@ def dss_target(request):
     Returns:
         The string corresponding to the considered DSS target for the test to be executed
     """
-    return request.param
+
+    dss_target = request.param
+
+    current_run_config = ScenarioConfiguration()
+    current_plugin_config = PluginInfo().plugin_metadata
+
+    target_dss_available_interpreter = set(
+        current_run_config.full_config[dss_target]["python_interpreter"]
+    )
+
+    plugin_python_interpreter = set(
+        current_plugin_config["python_interpreter"]
+        if "python_interpreter" in current_run_config
+        else []
+    )
+
+    python_interpreters_for_code_env = list(
+        target_dss_available_interpreter.intersection(plugin_python_interpreter)
+    )
+    if not python_interpreters_for_code_env:
+        raise pytest.skip(
+            "No common python interpreter could be found "
+            "between the DSS target and the ones ask by the plugin [{plugin_id}]"
+            "From plugin: {plugin_interpreters}, From target: {target_interpreters}".format(
+                plugin_id=current_plugin_config["id"],
+                plugin_interpreters=",".join(plugin_python_interpreter),
+                target_interpreters=",".join(target_dss_available_interpreter),
+            )
+        )
+
+    return dss_target
 
 
 @pytest.fixture(scope="function")
@@ -85,14 +120,14 @@ def user_dss_clients(dss_clients, dss_target):
     return dss_clients[dss_target]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def dss_clients(request):
     """
     The client fixture that is used by each of the test that will target a DSS instance.
     The scope of that fixture is set to module, so upon exiting a test module the fixture is destroyed
 
     Args:
-        request: A pytest obejct allowing to introspect the test context. It allows us to access 
+        request: A pytest obejct allowing to introspect the test context. It allows us to access
         the value of host set in `pytest_generate_tests`
 
     Returns:
@@ -113,15 +148,17 @@ def dss_clients(request):
             dss_clients.update({target: {}})
             url = host["url"]
             for user, api_key in host["users"].items():
-                dss_clients[target].update({user: dataikuapi.DSSClient(url, api_key=api_key)})
+                dss_clients[target].update(
+                    {user: dataikuapi.DSSClient(url, api_key=api_key)}
+                )
 
     return dss_clients
 
 
-@pytest.fixture(scope="module")
-def plugin(dss_clients):
+@pytest.fixture(scope="session")
+def plugin(dss_clients, dss_target):
     """
-    The plugin fixture that is used by each of the test. It depends on the client fixture, as it needs to be 
+    The plugin fixture that is used by each of the test. It depends on the client fixture, as it needs to be
     uploaded on the proper DSS instance using the admin user.
     The scope of that fixture is set to module, so upon exiting a test module the fixture is destroyed
 
@@ -144,45 +181,44 @@ def plugin(dss_clients):
     plugin_zip_path = os.path.join(os.getcwd(), "dist", plugin_zip_name)
 
     uploaded_plugin = None
-    
-    for target in dss_clients:
-        admin_client = dss_clients[target]["admin"]
-        get_plugin_ids = itemgetter("id")
-        available_plugins = list(map(get_plugin_ids, admin_client.list_plugins()))
-        if info["id"] in available_plugins:
-            logger.debug("Plugin [{plugin_id}] is already installed on [{dss_target}], updating it".format(plugin_id=info["id"], dss_target=target))
-            with open(plugin_zip_path, 'rb') as fd:
-                uploaded_plugin = admin_client.get_plugin(info["id"])
-                uploaded_plugin.update_from_zip(fd)
+
+    admin_client = dss_clients[dss_target]["admin"]
+    get_plugin_ids = itemgetter("id")
+    available_plugins = list(map(get_plugin_ids, admin_client.list_plugins()))
+    if info["id"] in available_plugins:
+        logger.debug("Plugin [{plugin_id}] is already installed on [{dss_target}], updating it".format(plugin_id=info["id"], dss_target=dss_target))
+        with open(plugin_zip_path, 'rb') as fd:
+            uploaded_plugin = admin_client.get_plugin(info["id"])
+            uploaded_plugin.update_from_zip(fd)
+    else:
+        logger.debug("Plugin [{plugin_id}] is not installed on [{dss_target}], installing it".format(plugin_id=info["id"], dss_target=dss_target))
+        with open(plugin_zip_path, 'rb') as fd:
+            admin_client.install_plugin_from_archive(fd)
+            uploaded_plugin = admin_client.get_plugin(info["id"])
+
+    plugin_settings = uploaded_plugin.get_settings()
+    raw_plugin_settings = plugin_settings.get_raw()
+
+    # install (or reinstall) code-env only if plugin has a specific code-env defined (not using DSS built-in):
+    if PluginInfo().plugin_codenv_metadata is not None:
+        if "codeEnvName" in raw_plugin_settings and len(raw_plugin_settings["codeEnvName"]) != 0:
+            logger.debug("Code env [{code_env_name}] is already associated to [{plugin_id}] on [{dss_target}], deleting it".format(code_env_name=raw_plugin_settings["codeEnvName"],
+                                                                                                                                   plugin_id=info["id"],
+                                                                                                                                   dss_target=dss_target))
+
+            code_env_list = admin_client.list_code_envs()
+            code_env_info = list(filter(lambda x: x["envName"] == raw_plugin_settings["codeEnvName"], code_env_list))
+            if code_env_info:
+                code_env_info = code_env_info[0]
+                code_env = admin_client.get_code_env(code_env_info["envLang"], code_env_info["envName"])
+                code_env.delete()
+            logger.debug("Code env [{code_env_name}] is deleted. Creating it again and associating it back to [{plugin_id}] on [{dss_target}]".format(code_env_name=raw_plugin_settings["codeEnvName"],
+                                                                                                                                                      plugin_id=info["id"],
+                                                                                                                                                      dss_target=dss_target))
+            _install_code_env(dss_target, info, plugin_settings, uploaded_plugin)
         else:
-            logger.debug("Plugin [{plugin_id}] is not installed on [{dss_target}], installing it".format(plugin_id=info["id"], dss_target=target))
-            with open(plugin_zip_path, 'rb') as fd:
-                admin_client.install_plugin_from_archive(fd)
-                uploaded_plugin = admin_client.get_plugin(info["id"])
-
-        plugin_settings = uploaded_plugin.get_settings()
-        raw_plugin_settings = plugin_settings.get_raw()
-
-        # install (or reinstall) code-env only if plugin has a specific code-env defined (not using DSS built-in):
-        if PluginInfo().plugin_codenv_metadata is not None:
-            if "codeEnvName" in raw_plugin_settings and len(raw_plugin_settings["codeEnvName"]) != 0:
-                logger.debug("Code env [{code_env_name}] is already associated to [{plugin_id}] on [{dss_target}], deleting it".format(code_env_name=raw_plugin_settings["codeEnvName"],
-                                                                                                                                       plugin_id=info["id"],
-                                                                                                                                       dss_target=target))
-
-                code_env_list = admin_client.list_code_envs()
-                code_env_info = list(filter(lambda x: x["envName"] == raw_plugin_settings["codeEnvName"], code_env_list))
-                if code_env_info:
-                    code_env_info = code_env_info[0]
-                    code_env = admin_client.get_code_env(code_env_info["envLang"], code_env_info["envName"])
-                    code_env.delete()
-                logger.debug("Code env [{code_env_name}] is deleted. Creating it again and associating it back to [{plugin_id}] on [{dss_target}]".format(code_env_name=raw_plugin_settings["codeEnvName"],
-                                                                                                                                                          plugin_id=info["id"],
-                                                                                                                                                          dss_target=target))
-                _install_code_env(target, info, plugin_settings, uploaded_plugin)
-            else:
-                logger.debug("No code env is associated to [{plugin_id}] on [{dss_target}], creating it".format(plugin_id=info["id"], dss_target=target))
-                _install_code_env(target, info, plugin_settings, uploaded_plugin)
+            logger.debug("No code env is associated to [{plugin_id}] on [{dss_target}], creating it".format(plugin_id=info["id"], dss_target=dss_target))
+            _install_code_env(dss_target, info, plugin_settings, uploaded_plugin)
 
 
 def _install_code_env(target, plugin_info, plugin_settings, uploaded_plugin):
@@ -200,12 +236,6 @@ def _install_code_env(target, plugin_info, plugin_settings, uploaded_plugin):
     plugin_python_interpreter = set(plugin_info["python_interpreter"] if "python_interpreter" in plugin_info else [])
 
     python_interpreters_for_code_env = list(target_available_interpreter.intersection(plugin_python_interpreter))
-    if not python_interpreters_for_code_env:
-        raise RuntimeError("No common python interpreter could be found "
-                           "between the DSS target and the ones ask by the plugin [{plugin_id}]"
-                           "From plugin: {plugin_interpreters}, From target: {target_interpreters}".format(plugin_id=plugin_info["id"],
-                                                                                                           plugin_interpreters=",".join(plugin_python_interpreter),
-                                                                                                           target_interpreters=",".join(target_available_interpreter)))
 
     python_interpreter = python_interpreters_for_code_env[0]  # if multiple in common taking the first one.
     logger.debug("The code env will be installed using interpreter [{}]".format(python_interpreter if python_interpreter is not None else "PYTHON27"))
