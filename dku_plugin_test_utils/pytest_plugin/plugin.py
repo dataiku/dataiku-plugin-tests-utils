@@ -185,9 +185,7 @@ def plugin(dss_clients, dss_target):
     """
 
     logger.info(
-        "Uploading the plugin to each DSS instances [{}]".format(
-            ",".join(dss_clients.keys())
-        )
+        f"Uploading the plugin to [{dss_target}] instance"
     )
     p = subprocess.Popen(
         ["make", "plugin"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
