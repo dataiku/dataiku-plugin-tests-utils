@@ -211,6 +211,7 @@ def _install_code_env(target, plugin_info, plugin_settings, uploaded_plugin):
     logger.debug("The code env will be installed using interpreter [{}]".format(python_interpreter if python_interpreter is not None else "PYTHON27"))
     ret = uploaded_plugin.create_code_env(python_interpreter=python_interpreter).wait_for_result()
     if ret["messages"]["error"]:
+        logger.error("Error is ", ret["messages"]["error"])
         raise RuntimeError("Error while installing the code-env [{code_env_name}], check DSS code-env creation logs on DSS".format(code_env_name=ret["envName"]))
 
     logger.debug("The code env [{code_env_name}] is assocated with [{plugin_id}]".format(code_env_name=ret["envName"], plugin_id=plugin_info["id"]))
