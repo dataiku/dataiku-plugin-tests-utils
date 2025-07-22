@@ -113,7 +113,9 @@ def dss_clients(request):
             dss_clients.update({target: {}})
             url = host["url"]
             for user, api_key in host["users"].items():
+                logger.info(f"Connecting to DSS {url} for target {target} and user {user}")
                 dss_clients[target].update({user: dataikuapi.DSSClient(url, api_key=api_key)})
+                logger.info(f"Connected to DSS {url} for target {target} and user {user}")
 
     return dss_clients
 

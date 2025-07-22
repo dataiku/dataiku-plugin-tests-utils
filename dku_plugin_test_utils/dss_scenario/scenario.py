@@ -32,9 +32,22 @@ def run(client, project_key, scenario_id, user="default"):
     # dss_scenario_settings.run_as(user)
 
     # effectively running the scenario
-    dss_scenario = user_dss_client.get_project(project_key).get_scenario(scenario_id)
-    dss_scenario.run_and_wait()
-    last_dss_scenario_details = dss_scenario.get_last_finished_run().get_details()
+    try:
+        logging.info(f"Getting scenario '{scenario_id}' from project '{project_key}'...")
+        dss_scenario = user_dss_client.get_project(project_key).get_scenario(scenario_id)
+        logging.info("Successfully retrieved scenario object.")
+
+        logging.info(f"Triggering run for scenario '{scenario_id}' and waiting for completion...")
+        dss_scenario.run_and_wait()
+        logging.info("Scenario run completed successfully.")
+
+        logging.info("Fetching details of the last finished run...")
+        last_dss_scenario_details = dss_scenario.get_last_finished_run().get_details()
+        logging.info("Successfully fetched run details.")
+
+    except Exception as e:
+        logging.error(f"Failed to run scenario '{scenario_id}'. Error: {e}")
+        logging.exception("Failed to run scenario")
 
     jobs = []
     for step in last_dss_scenario_details["stepRuns"]:
