@@ -33,21 +33,21 @@ def run(client, project_key, scenario_id, user="default"):
 
     # effectively running the scenario
     try:
-        logging.info(f"Getting scenario '{scenario_id}' from project '{project_key}'...")
+        logger.info(f"Getting scenario '{scenario_id}' from project '{project_key}'...")
         dss_scenario = user_dss_client.get_project(project_key).get_scenario(scenario_id)
-        logging.info("Successfully retrieved scenario object.")
+        logger.info("Successfully retrieved scenario object.")
 
-        logging.info(f"Triggering run for scenario '{scenario_id}' and waiting for completion...")
+        logger.info(f"Triggering run for scenario '{scenario_id}' and waiting for completion...")
         dss_scenario.run_and_wait()
-        logging.info("Scenario run completed successfully.")
+        logger.info("Scenario run completed successfully.")
 
-        logging.info("Fetching details of the last finished run...")
+        logger.info("Fetching details of the last finished run...")
         last_dss_scenario_details = dss_scenario.get_last_finished_run().get_details()
-        logging.info("Successfully fetched run details.")
+        logger.info("Successfully fetched run details.")
 
     except Exception as e:
-        logging.error(f"Failed to run scenario '{scenario_id}'. Error: {e}")
-        logging.exception("Failed to run scenario")
+        logger.error(f"Failed to run scenario '{scenario_id}'. Error: {e}")
+        logger.exception("Failed to run scenario")
         raise e
 
     jobs = []
