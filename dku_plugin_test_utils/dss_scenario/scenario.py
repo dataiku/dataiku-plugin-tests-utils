@@ -48,6 +48,7 @@ def run(client, project_key, scenario_id, user="default"):
     except Exception as e:
         logging.error(f"Failed to run scenario '{scenario_id}'. Error: {e}")
         logging.exception("Failed to run scenario")
+        raise e
 
     jobs = []
     for step in last_dss_scenario_details["stepRuns"]:
