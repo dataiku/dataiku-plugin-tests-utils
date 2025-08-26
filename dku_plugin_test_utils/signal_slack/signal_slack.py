@@ -8,6 +8,10 @@ import sys
 
 import requests
 
+SLACK_MAX_BLOCKS = 50
+N_BLOCKS_PER_ITEM = 3
+BATCH_SIZE = (SLACK_MAX_BLOCKS // N_BLOCKS_PER_ITEM) * N_BLOCKS_PER_ITEM  # Prevent split blocks that belong together
+
 
 def send_slack_signal(path_to_raw_daily, slack_endpoint):
 
@@ -134,14 +138,22 @@ def send_slack_signal(path_to_raw_daily, slack_endpoint):
     print("---------")
 
     if blocks:
-        payload_base["blocks"].extend(blocks)
-
-        print("payload ----")
-        print(json.dumps(payload_base, indent=2))
+        batch_n = 0
+        print("Nb batches ----")
+        print("There will be {} batches sent.".format(len(blocks) // BATCH_SIZE))
         print("------------")
+        while batch_n < len(blocks):
+            blocks_batch = blocks[batch_n:batch_n+BATCH_SIZE]
+            batch_payload = copy.deepcopy(payload_base)
+            batch_payload["blocks"].extend(blocks_batch)
 
-        x = requests.post(slack_endpoint, data=json.dumps(payload_base))
-        x.raise_for_status()
+            print("payload ----")
+            print(json.dumps(batch_payload, indent=2))
+            print("------------")
+
+            x = requests.post(slack_endpoint, data=json.dumps(batch_payload))
+            x.raise_for_status()
+            batch_n += BATCH_SIZE
 
         for status_file in all_status_files:
             os.remove(os.path.join(path_to_raw_daily, status_file))
